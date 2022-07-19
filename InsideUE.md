@@ -58,3 +58,32 @@ AInfo，记录着本Level的各种规则属性。WorldSettings记录Level的规�
 Persistent即一开始加载进world，streaming时后续动态加载的意思，levels里保存有所有的当前已经加载的level，streaminglevels保存整个world的levels配置列表。
 ![AActor](./InsideImg/UWorld.png)
 玩家切换场景，就是在world种加载和释放不同的Level。
+## WorldContext
+World可以有多个，主要是编辑器一个world，编辑器里的game一个world，worldcontext负责这些world的切换，而同时也保存着Level切换的上下文。TravelUrl和TravelType就是负责设定下一个level的目标和转换过程。
+level的上下文由worldcontext来保存，而不是由world。world和level的切换是在下一帧完成的。
+![FWorldContext](./InsideImg/FWorldContext.png)
+## GameInstance
+GameInstance管理着当前worldcontext和其它对象，它在游戏的运行中一直存在，所以那些独立于level的逻辑或数据，可以放在gameinstance里。
+![FWorldContext](./InsideImg/UGameInstance.jpg)
+## Engine
+它保存着所有的WorldContext，编辑器也是一个WorldContext，其实编辑器也是一个游戏，我们在游戏中开发游戏。
+![FWorldContext](./InsideImg/UEngine.jpg)
+## GamePlayStatics
+这个类是暴露给蓝图用的静态类，是一个蓝图函数库，如GetPlayerController, SpawnActor等等方法，其实它就是封装了操作world和level的能力。
+Object->Actor+Component->Level->World->WorldContext->GameInstance->Engine
+## Pawn
+Actor可以说是由component组成的，即Actor的功能实现是由component实现的，在UE里，component表达的是功能的概念。你的component是可以随便迁移到下一个游戏中的，actor没有你的component也是可以运行的。
+当你发现违背了这两点，那么你的component就是失败的。耦合度太高了，你应该重新设计。blueprintActor其实就是unity中的预制体prefab。
+Pawn可以被controller控制，有3块基本的接口
+1：可被controller控制 可以响应输入
+2：PhysicsCollision表示 表达自身的存在，物理表示
+3：MovementInput的基本接口 可以移动
+![FWorldContext](./InsideImg/APwan.jpg)
+pawn想表达的最关键的点是它可以被controller操纵的能力，这是它与普通actor的区别。
+输入事件处理流程
+![FWorldContext](./InsideImg/InputProcess.jpg)
+从上面的图可以看出，响应输入的首先是actor检测是否可以接收输入，接着是PlayerController，接着是Level BluePrint，最后才是Pawn。
+输入的处理功能被实现为InputComponent，输入的种类就很多了，按键 摇杆 触摸等等。
+响应了按键之后，响应逻辑是在MovementInput里处理的。
+
+
