@@ -85,5 +85,42 @@ pawn想表达的最关键的点是它可以被controller操纵的能力，这是
 从上面的图可以看出，响应输入的首先是actor检测是否可以接收输入，接着是PlayerController，接着是Level BluePrint，最后才是Pawn。
 输入的处理功能被实现为InputComponent，输入的种类就很多了，按键 摇杆 触摸等等。
 响应了按键之后，响应逻辑是在MovementInput里处理的。
+### DefaultPawn
+![DefaultPawn](InsideImg/ACharacter.jpg)
+DefaultPawn默认带了一个DefaultPawnMovementComponent spherical CollisionComponent和StaticMeshComponent
+### SpectatorPawn
+这个是观战得pawn，继承自default pawn，拥有摄像机得漫游能力，拥有USpectatorPawnMovement(该组件是不带重力得漫游)。并关闭了StaticMesh显示，碰撞也设置到了Spectator通道。
+### Character
+Character是人形得pawn，它有个CharacterMovementComponent，表示玩家得所有移动，游泳，飞翔等等。
+CapsuleComponent是一个贴近人形得胶囊。skeletalMesh是有骨骼蒙皮得mesh。并且可以IK。
+当你有人形要表示，那就用character，否则就pawn就足够了。
+## Controller
+Pawn是可以供Controller控制得，而其控制逻辑就是放在Controller里，即业务逻辑是放在controller里得，如玩家按A键，角色自动找一个最近得敌人并攻击。这个寻找目标并攻击得逻辑过程，就是控制pawn得过程。
+在游戏中，程序=数据+逻辑+显示
+显示就是UI 如屏幕上得3D画面 手柄上得输入震动，VR头盔等等
+数据就是Actor Mesh，Matieral，level等等
+逻辑就是各种渲染算法，物理模拟，AI寻路等等。
+在ue中，逻辑可以说就是我们得controller。
+### AController
+![AController](InsideImg/AController.jpg)
+AController继承自Actor，并添加了控制Pawn得接口。Possess和UnPossess，因为继承自Actor，所以有SceneComponent作为rootcomponent，可以放置在世界中。
+在UE中，pawn和controller是一对一得关系。如开车时，则需要从人物得controller切换到车辆得控制。
+因为是1对1得关系，所以从pawn中提供了GetController方法，同理在controller中提供了GetPawn方法。
+Controller本身有位置信息，所以可以利用该信息更好得控制pawn得位置和移动。
+Controller的Rotation，因为想要让我的pawn和controller保持旋转朝向一致，因为controller作为控制pawn，所以controller需要维护自己的rotation。
+再说位置，为了让pawn在respawn的时候，可以选择当前位置创建，所以controller就有了自己的位置。因此，为了自动更新controller的位置，ue提供了bAttachToPawn的开关选项，默认是关闭的，即默认不会自动更新controller的位置。如果打开，那么controller就会附加到pawn的子节点上，从而更新位置和转向。
+当然，如果controller确实只是逻辑控制，如AIController的话，那位置确实不需要更新。
+在上面的图中，可以看到，pawn也是能接收到玩家输入的，同时controller也是可以的，并且controller算是第一个接收到输入的。
+从概念上，pawn是能动的物体，重点在于动。controller则是动到哪里，重点的是决策，如方向等等。所以，pawn本身固有的能力逻辑，如前进后退，播放动画，碰撞检测之类的，应该放在pawn内实现，而对于一些可替换的逻辑，或者只能决策的，应该放在controller实现。
+从对应上来说，如果某个逻辑只属于某类pawn，那可以在pawn内实现(如坦克开炮)，而如果在多个pawn中，如自动寻找攻击目标(如战车和坦克)，那么应该放在controller中。
+从存在周期来讲，pawn销毁了就没了，而controller是一直存在的，所以一些逻辑和状态要放在controller里。
+### APlayerState
+上面说到一些状态可以放在controller里，但是ue实现了APlayerState这个类，来存放玩家状态。controller只作为逻辑的实现。APlayerState继承自AInfo，而AInfo继承自AACtor，因为PlayerState也需要进行网络复制的功能，所以就继承了AInfo。
+![AController](InsideImg/AplayerState.png)
+AInfo是不爱表现，纯数据的大本营，继承自Actor，有网络复制等功能。
+controller和网络的结合很紧密。可以理解成controller也可以当作玩家在服务器上的代理对象，当玩家偶尔掉线的时候，因为连接不在，所以controller失效被释放了，服务器可以把对应的该PlayerState暂存起来，等玩家再重连上的时候，可以利用该PlayerState重新挂载上controller。有一个顺畅的体验。AIcontroller运行再server上，client上并没有。
+应当注意的是，当关卡切换的时候，APlayerState也会被释放掉。所以跨关卡数据不应该放进来。playerstate只表示玩家的游玩数据。而关卡数据应该放在GameState中。
+Component->Actor->Pawn->Controller的结构。
+![AController](InsideImg/AController_Pawn.jpg)
 
 
