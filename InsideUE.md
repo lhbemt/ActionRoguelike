@@ -16,11 +16,11 @@ UE也是参考了Unity的，采用了这种ECS架构，Actor只是个基础，�
 	TSet<UActorComponent*> OwnedComponents，保存着这个Actor所拥有的所有components。一般会有一个SceneComponent作为其RootComponent。
 	TArray<UActorComponent*> InstanceComponents 保存着其实例化的components，一个Actor如果想放进Level里，就必须实例化USceneComponent* RootComponent
 ### ActorComponent
-components的类图如下
+components的类图如下。
 ![AActor](InsideImg/ActorComponent.jpg)
 可以看到，SceneComponent有Transform，另外的AttachParent和AttachChildren告诉我们，component可以作为另一个component的父类，即components可以嵌套。
 一个component可以有多个component子类。但是注意限制，只有SceneComponent才可以互相嵌套。而最上层的ActorComponent是不行的。
-可以说，只有位置Transform的component才能互相嵌套
+可以说，只有位置Transform的component才能互相嵌套。
 ![SceneComponentCombine](InsideImg/SceneComponetCombine.jpg)
 但是也要注意SceneComponent嵌套过深的问题。
 ### Actor之间的父子关系
@@ -77,10 +77,10 @@ Actor可以说是由component组成的，即Actor的功能实现是由component�
 Pawn可以被controller控制，有3块基本的接口
 1：可被controller控制 可以响应输入
 2：PhysicsCollision表示 表达自身的存在，物理表示
-3：MovementInput的基本接口 可以移动
+3：MovementInput的基本接口 可以移动。
 ![FWorldContext](InsideImg/APwan.jpg)
 pawn想表达的最关键的点是它可以被controller操纵的能力，这是它与普通actor的区别。
-输入事件处理流程
+输入事件处理流程：
 ![FWorldContext](InsideImg/InputProcess.jpg)
 从上面的图可以看出，响应输入的首先是actor检测是否可以接收输入，接着是PlayerController，接着是Level BluePrint，最后才是Pawn。
 输入的处理功能被实现为InputComponent，输入的种类就很多了，按键 摇杆 触摸等等。
