@@ -122,5 +122,63 @@ controller和网络的结合很紧密。可以理解成controller也可以当作
 应当注意的是，当关卡切换的时候，APlayerState也会被释放掉。所以跨关卡数据不应该放进来。playerstate只表示玩家的游玩数据。而关卡数据应该放在GameState中。
 Component->Actor->Pawn->Controller的结构。
 ![AController](InsideImg/AController_Pawn.jpg)
+### APlayerController
+playercontroller拥有camera和位置，其次可以响应输入(如玩家按下AWSD)。操控pawn(possess后再传递Input)。playercontroller有自己的viewport。
+网络上的pawn，实际上是通过server上的playercontroller控制server上的pawn，然后再复制到远程机器上的pawn实现的。
+![APlayerController](InsideImg/APlayerController.jpg)
+拥有的模块：
+1：camera的管理，目的是为了控制玩家的视角，所以有了PlayerCameraManager这一个摄像机管理类。用来方便的切换摄像机。playercontroller的controlrotation和view target也都是为了更新camera的位置。
+2：Input系统，自己对输入的处理，使用了UPlayerInput来委托处理。
+3：UPlayer关联，playercontroller只有在设置SetPlayer后，才可以正常工作，UPlayer即可以是本地的LocalPlayer，也可以是网络控制UNetConnection。
+4：HUD显示，用于在当前控制的摄像机面前显示一些UI。
+5：Level的切换，PlayerController作为网络里通道，在一起进行Level Travelling的时候，也都是先通过playercontroller进行rpc调用，然后由playercontroller来转发到自己world中来进行
+6：voice，方便网络语音聊天的一些控制函数。
+在联机游戏中，只有playerstate会被同步过来，playercontroller只会存在server上。
+在任意时刻，UPlayer->PlayerController->PlayerState都是1：1：1的存在。但是可以切换。UPlayer可以理解为一个全局的玩家逻辑实体，playercontroller是玩家的意志，playerstate就是玩家的状态。
+### AAIPlayerController
+![AIController](InsideImg/AIController.jpg)
+同playercontroller对比，少了camera，input，uplayer关联，hud，voice，level切换接口。
+但是多了AI需要的组件。
+navigation，智能导航寻路。在移动的过程中，因为少了玩家控制来转向，所以增加了SetFocus来控制当前的pawn视角朝向位置。
+AI组件，运行启动行为树，使用黑板数据，探索周围环境。
+task系统，让ai去完成一些任务。GamePlayAbilities为actor添加额外能力属性的模块，如hp，mp，GamePlayEffect则是加buff的。
+同playercontroller上，aicontroller也只存在于server上。
+![AController-APanw](InsideImg/AController-APanw.jpg)
+## GameMode
+简单的来说，world由一个persistentlevel和一些sublevels组成，persistentlevel切换了，相应的world也会切换。
+一个world就是一个game，其玩法叫做mode，
+![AGameMode](InsideImg/AGameMode.jpg)
+1：gamemode记录了class
+如下，注册这些class
+![gamemode_setting](InsideImg/gamemode_setting.png)
+2：游戏的进度，如支不支持暂停，怎么重启等游戏内的状态操作，SetPause RestartPlayer等函数控制
+3：Level的切换，或者说world的切换更为合适，gamemode决定了刚进入一场游戏是否需要播放开场动画(cinematic)，也决定了切换到下一个关卡是否要bUseSeamlessTracel，一旦开启这个选项后，你可以重载GameMode和PlayerController的GetSeamlessTravelActorList和GetSeamlessTravelActorList来指定哪些actors不被释放而进入下一个World的level。
+4：多人游戏的步调同步，在多人游戏中，常常需要等待所有玩家都连上后，载入地图完毕才能一起开始逻辑，因此UE提供了MatchState来指定一场游戏运行的状态。
+gamemode在一个world中，只会是president配置的那个gamemodeclass。
+当进行travelling进入新的world的时候，如果没开启bUseSeamlessTravel的时候，那么当前的gamemode将会被释放，并且创建travel后的world的gamemode。当开启时，当前的world的gamemode会调用GetSeamlessTravelActorList。可以看到这个函数，默认会add this，把这个gamemode保留下来。
 
+	void AGameMode::GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList)
+	{
+		UWorld* World = GetWorld();
+		// Get allocations for the elements we're going to add handled in one go
+		const int32 ActorsToAddCount = World->GameState->PlayerArray.Num() + (bToTransition ?  3 : 0);
+		ActorList.Reserve(ActorsToAddCount);
+
+		// always keep PlayerStates, so that after we restart we can keep players on the same team, etc
+		ActorList.Append(World->GameState->PlayerArray);
+
+		if (bToTransition)
+		{
+			// keep ourselves until we transition to the final destination
+			ActorList.Add(this);
+			// keep general game state until we transition to the final destination
+			ActorList.Add(World->GameState);
+			// keep the game session state until we transition to the final destination
+			ActorList.Add(GameSession);
+
+			// If adding in this section best to increase the literal above for the ActorsToAddCount
+		}
+	}
+当从transitionworld迁移到newworld的时候，bToTransition为false，所以在newworld后，也会重新创建gamemode。
+结论是，ue的travelling，会使用一个中间world作为过渡，gamemode在新的world里是会新生成一个的，即使class类型一致，即使bUseSeamlessTravel，因此在travelling时，要小心再GameMode里的状态丢失，不过pawn和controller默认时一致的。
 
