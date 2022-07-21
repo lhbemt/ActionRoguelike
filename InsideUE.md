@@ -148,6 +148,7 @@ task系统，让ai去完成一些任务。GamePlayAbilities为actor添加额外�
 简单的来说，world由一个persistentlevel和一些sublevels组成，persistentlevel切换了，相应的world也会切换。
 一个world就是一个game，其玩法叫做mode，
 ![AGameMode](InsideImg/AGameMode.jpg)
+![AGameModeBase](InsideImg/AGameModeBase.jpg)
 1：gamemode记录了class
 如下，注册这些class
 ![gamemode_setting](InsideImg/gamemode_setting.png)
@@ -181,4 +182,31 @@ gamemode在一个world中，只会是president配置的那个gamemodeclass。
 	}
 当从transitionworld迁移到newworld的时候，bToTransition为false，所以在newworld后，也会重新创建gamemode。
 结论是，ue的travelling，会使用一个中间world作为过渡，gamemode在新的world里是会新生成一个的，即使class类型一致，即使bUseSeamlessTravel，因此在travelling时，要小心再GameMode里的状态丢失，不过pawn和controller默认时一致的。
+level和gamemode
+从概念上讲，level是表示，而gamemode是逻辑，level管理的是自身的逻辑，而gamemode在level和sublevel间一直存在，所以gamemode专注于玩法，如胜利条件，刷怪条件等等。level管理自身actor，如某块区域有重力等等。
+gamemode只在server中存在，client只负责展示，但是client有level scriptor
+gamemode专注于游戏玩法本身，而player controller则专注于玩家本身。
+gameinstance关注不同的world，而gamemode只关注自身的world。
+## GameState
+上面说到PlayerState是玩家的状态，而游戏的状态则是由gamestate保存在server上的。
+![gamestate](InsideImg/AGameState.png)
+![AGameStateBase](InsideImg/AGameStateBase.jpg)
+gamestate在client和server上都存在。同时它保存了APlayerState。它收集了server上的playerstate，所以在client中，就可以看到别的client的state了。gamemode纯在server上有，所以client上看不到。
+## GameSession
+是在网络联机游戏中，针对session使用的一个管理类。
+协调场景的表现通过level scriptor，而玩法则是通过gamemode。
+![level_gamestate](InsideImg/level_gamestate.png)
+## UPlayer
+在ue中，Player指的是输入的一个抽象。比如本地输入和远端网络输入，都是player。所以它并不是一个actor，不需要摆放在场景中，因此它是直接继承自UObject。
+![UPlyaer](InsideImg/UPlayer.png)
+可以看到，player怎么在游戏中表现呢，因为有输入就是一个player，因此为了在游戏中表现出来，它是需要和playercontroller关联起来。这样player的输入，就能在场景中表现出来。
+### ULocalPlayer
+ULocalPlayer表示本地输入，比如手柄啊，那些，在本地设备输入的，就看作一个localplayer。
+![ULocalPlyaer](InsideImg/ULocalPlayer.jpg)
+可以看到，在gameinstance保存这localplayer的指针，同时相比player，localplayer多了viewport的相关配置。gameinstance有localplayer后，可以方便的实现跟本地玩家相关的操作。
+
+
+
+
+
 
